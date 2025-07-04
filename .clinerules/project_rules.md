@@ -16,7 +16,9 @@
     *   Strictly follow PEP 8 naming conventions.
 *   **Code Quality:**
     *   Use type hints for all function signatures.
-    *   Implement robust `try-except` blocks for all I/O and API calls, with clear logging.
+    *   Implement robust `try-except` blocks for all I/O and API calls, with clear and informative logging with exc_info=True for stack trace.
+    *   Adhere to the "Don't Repeat Yourself" (DRY) principle by abstracting common logic into reusable functions or classes.
+    *   Prioritize readability and simplicity over overly complex or clever solutions.
 
 ---
 
