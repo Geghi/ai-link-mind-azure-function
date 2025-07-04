@@ -3,16 +3,30 @@ from urllib.parse import urlparse, urljoin
 import requests
 from bs4 import BeautifulSoup
 
-def get_internal_links(base_url, current_url, max_links_per_page=20):
+def get_page_html_content(url: str) -> str:
     """
-    Retrieves all internal links from a given URL.
+    Fetches the raw HTML content of a given URL.
     """
-    logging.info(f"Scraping {current_url}")
+    logging.info(f"Fetching HTML content from {url}")
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.text
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching HTML content from {url}: {e}")
+        return ""
+    except Exception as e:
+        logging.error(f"An unexpected error occurred while fetching HTML content from {url}: {e}")
+        return ""
+
+def get_internal_links(base_url: str, current_url: str, html_content: str, max_links_per_page: int = 20) -> list[str]:
+    """
+    Retrieves all internal links from a given HTML content.
+    """
+    logging.info(f"Extracting internal links from {current_url}")
     links = set()
     try:
-        response = requests.get(current_url, timeout=10)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(html_content, 'html.parser')
         base_domain = urlparse(base_url).netloc
 
         for a_tag in soup.find_all('a', href=True):
@@ -25,9 +39,19 @@ def get_internal_links(base_url, current_url, max_links_per_page=20):
                 links.add(clean_url)
                 if len(links) >= max_links_per_page:
                     break
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error scraping {current_url}: {e}")
     except Exception as e:
-        logging.error(f"An unexpected error occurred while scraping {current_url}: {e}")
+        logging.error(f"An unexpected error occurred while extracting links from {current_url}: {e}")
     
     return list(links)
+
+def get_page_text_content(html_content: str) -> str:
+    """
+    Extracts plain text from given HTML content.
+    """
+    logging.info(f"Extracting text content from HTML.")
+    try:
+        soup = BeautifulSoup(html_content, 'html.parser')
+        return soup.get_text(separator=' ', strip=True)
+    except Exception as e:
+        logging.error(f"An unexpected error occurred while extracting text content: {e}")
+        return ""
