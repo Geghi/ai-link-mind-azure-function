@@ -19,6 +19,7 @@
     *   Implement robust `try-except` blocks for all I/O and API calls, with clear and informative logging with exc_info=True for stack trace.
     *   Adhere to the "Don't Repeat Yourself" (DRY) principle by abstracting common logic into reusable functions or classes.
     *   Prioritize readability and simplicity over overly complex or clever solutions.
+    *   Write very simple docstring ONLY for complex methods but keep them minimal.
 
 ---
 

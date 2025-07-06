@@ -3,11 +3,28 @@ from src.services.supabase_service import get_supabase_client
 
 supabase = get_supabase_client()
 
+def get_scraped_urls_for_task(task_id: str) -> set[str]:
+    """
+    Retrieves all URLs already scraped or queued for a given task_id.
+
+    Args:
+        task_id (str): The ID of the scraping task.
+
+    Returns:
+        set[str]: A set of URLs associated with the task.
+    """
+    try:
+        response = supabase.table('scraped_pages').select('url').eq('task_id', task_id).execute()
+        if response.data:
+            return {record['url'] for record in response.data}
+        return set()
+    except Exception as e:
+        logging.error(f"Error retrieving scraped URLs for task {task_id}: {e}", exc_info=True)
+        return set()
+
 def insert_scraped_page(task_id: str, url: str, status: str) -> int | None:
     """
-    Inserts a new scraped page entry into the 'scraped_pages' table.
-    If an entry with the given task_id and URL already exists, it logs a message
-    and returns the ID of the existing entry.
+    Inserts a new scraped page entry or updates an existing one using upsert.
 
     Args:
         task_id (str): The ID of the scraping task.
@@ -15,25 +32,22 @@ def insert_scraped_page(task_id: str, url: str, status: str) -> int | None:
         status (str): The initial status of the scraped page (e.g., "Queued", "Processing").
 
     Returns:
-        int | None: The ID of the inserted or existing scraped page, or None if an error occurs.
+        int | None: The ID of the inserted or updated scraped page, or None if an error occurs.
     """
     try:
-        # Check if the link already exists for this task_id and URL
-        response = supabase.table('scraped_pages').select('id, url').eq('task_id', task_id).eq('url', url).execute()
+        data_to_upsert = {"task_id": task_id, "url": url, "status": status}
         
-        if not response.data: # If link does not exist, insert
-            insert_response = supabase.table('scraped_pages').insert({"task_id": task_id, "url": url, "status": status}).execute()
-            if insert_response.data:
-                logging.info(f"Inserted new scraped page: Task ID: {task_id}, URL: {url}, Status: {status}")
-                return insert_response.data[0]['id']
-            else:
-                logging.error(f"Failed to insert scraped page: {insert_response.status_code} - {insert_response.text}", exc_info=True)
-                return None
+        # Use upsert to insert if not exists, or update if exists based on task_id and url
+        upsert_response = supabase.table('scraped_pages').upsert(data_to_upsert, on_conflict='task_id,url').execute()
+        
+        if upsert_response.data:
+            logging.info(f"Upserted scraped page: Task ID: {task_id}, URL: {url}, Status: {status}")
+            return upsert_response.data[0]['id']
         else:
-            logging.info(f"Scraped page already exists: Task ID: {task_id}, URL: {url}. Skipping insert.")
-            return response.data[0]['id']
+            logging.error(f"Failed to upsert scraped page: {upsert_response.status_code} - {upsert_response.text}", exc_info=True)
+            return None
     except Exception as e:
-        logging.error(f"Error inserting scraped page (Task ID: {task_id}, URL: {url}): {e}", exc_info=True)
+        logging.error(f"Error upserting scraped page (Task ID: {task_id}, URL: {url}): {e}", exc_info=True)
         return None
 
 def update_scraped_page_status(task_id: str, url: str, status: str, page_text_content: str = None) -> bool:
@@ -66,7 +80,7 @@ def update_scraped_page_status(task_id: str, url: str, status: str, page_text_co
         logging.error(f"Error updating scraped page (Task ID: {task_id}, URL: {url}): {e}", exc_info=True)
         return False
 
-def insert_text_chunk_with_embedding(scraped_page_id: int, chunk_text: str, embedding: list) -> bool:
+def insert_text_chunk_with_embedding(scraped_page_id: int, chunk_text: str, embedding: list) -> int | None:
     """
     Inserts a text chunk and its embedding into the 'page_chunks' table.
 
@@ -76,7 +90,7 @@ def insert_text_chunk_with_embedding(scraped_page_id: int, chunk_text: str, embe
         embedding (list): The OpenAI embedding for the text chunk.
 
     Returns:
-        bool: True if the insertion was successful, False otherwise.
+        int | None: The ID of the inserted chunk, or None if an error occurs.
     """
     try:
         data_to_insert = {
@@ -86,11 +100,32 @@ def insert_text_chunk_with_embedding(scraped_page_id: int, chunk_text: str, embe
         }
         response = supabase.table('page_chunks').insert(data_to_insert).execute()
         if response.data:
-            logging.info(f"Inserted text chunk for scraped_page_id {scraped_page_id}.")
-            return True
+            chunk_id = response.data[0]['id']
+            logging.info(f"Inserted text chunk for scraped_page_id {scraped_page_id} with chunk_id {chunk_id}.")
+            return chunk_id
         else:
             logging.error(f"Failed to insert text chunk for scraped_page_id {scraped_page_id}: {response.status_code} - {response.text}", exc_info=True)
-            return False
+            return None
     except Exception as e:
         logging.error(f"Error inserting text chunk for scraped_page_id {scraped_page_id}: {e}", exc_info=True)
-        return False
+        return None
+
+def get_scraped_page_by_task_url(task_id: str, url: str) -> dict | None:
+    """
+    Retrieves a scraped page entry by task_id and URL.
+
+    Args:
+        task_id (str): The ID of the scraping task.
+        url (str): The URL of the page.
+
+    Returns:
+        dict | None: The scraped page data, or None if not found or an error occurs.
+    """
+    try:
+        response = supabase.table('scraped_pages').select('*').eq('task_id', task_id).eq('url', url).limit(1).execute()
+        if response.data:
+            return response.data[0]
+        return None
+    except Exception as e:
+        logging.error(f"Error retrieving scraped page for task {task_id}, URL {url}: {e}", exc_info=True)
+        return None
