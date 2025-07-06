@@ -30,7 +30,6 @@ The application recursively scrapes a website, extracts text, generates OpenAI e
 *   **`src/services/supabase_service.py`:** Manages the Supabase client connection.
 *   **`src/services/scraped_pages_service.py`:** Handles all database interactions with `scraped_pages` and `page_chunks` tables.
 *   **`src/services/openai_service.py`:** Generates embeddings using the OpenAI API.
-*   **`src/services/azure_service_bus_service.py`:** Manages sending and receiving messages from Azure Service Bus.
 *   **`src/services/pinecone_service.py`:** Manages the Pinecone client connection and vector uploads.
 *   **`src/services/embedding_service.py`:** Encapsulates the logic for text chunking and OpenAI embedding generation.
 

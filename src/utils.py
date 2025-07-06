@@ -3,9 +3,7 @@ import logging
 import azure.functions as func
 from azure.functions import Out
 from azure.servicebus import ServiceBusReceivedMessage
-
 from src.services.scraped_pages_service import insert_scraped_page, get_scraped_urls_for_task
-from src.services.azure_service_bus_service import send_message_to_service_bus
 
 import tiktoken
 from typing import List, Dict
@@ -82,7 +80,7 @@ def parse_queue_message(azqueue: func.QueueMessage) -> dict | None:
     
     return {"task_id": task_id, "url": url, "depth": depth, "max_depth": max_depth, "scraped_page_id": scraped_page_id}
 
-def process_internal_links(task_id: str, current_url: str, depth: int, max_depth: int, internal_links: list[str], output_queue: func.Out[str], sender) -> None:
+def process_internal_links(task_id: str, current_url: str, depth: int, max_depth: int, internal_links: list[str], output_queue: func.Out[str]) -> None:
     """Helper to process internal links found on a page."""
     
     # Fetch all existing URLs for the current task once

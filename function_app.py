@@ -1,23 +1,15 @@
 import azure.functions as func
 import logging
-from azure.functions import Out
-from azure.servicebus import ServiceBusClient, ServiceBusReceiver # Added for Service Bus operations
-
 from src.services.scraper import get_internal_links, get_page_text_content, get_page_html_content
-from src.services.azure_service_bus_service import get_service_bus_sender_and_queue_name, receive_single_message_from_service_bus, complete_message, get_service_bus_receiver, dead_letter_message
 from src.services.supabase_service import get_supabase_client
 from src.services.scraped_pages_service import insert_scraped_page, update_scraped_page_status
 from src.services.embedding_service import process_and_embed_text # New import for embedding service
 from src.utils import json_response, parse_queue_message, process_internal_links, parse_http_request, parse_service_bus_message
-import os # Added for environment variables
 import json 
 
 app = func.FunctionApp()
 
 supabase = get_supabase_client()
-sender, SERVICE_BUS_QUEUE_NAME = get_service_bus_sender_and_queue_name()
-receiver = get_service_bus_receiver(SERVICE_BUS_QUEUE_NAME)
-
 
 @app.queue_trigger(arg_name="azqueue", queue_name="scrape-queue",
                    connection="AzureWebJobsStorage")
@@ -62,7 +54,7 @@ def ScrapeUrlRecursive(azqueue: func.QueueMessage, output_queue: func.Out[str]) 
     internal_links = get_internal_links(url, url, html_content)
     logging.info(f"Found internal links at {url}: {internal_links}")
 
-    process_internal_links(task_id, url, depth, max_depth, internal_links, output_queue, sender)
+    process_internal_links(task_id, url, depth, max_depth, internal_links, output_queue)
 
     update_scraped_page_status(task_id, url, "Completed")
     logging.info(f"Processed {url} at depth {depth}. Status: Completed.")
