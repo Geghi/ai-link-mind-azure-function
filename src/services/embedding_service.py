@@ -4,12 +4,13 @@ from src.services.openai_service import get_embedding
 from src.services.scraped_pages_service import insert_text_chunk_with_embedding
 from src.services.pinecone_service import PineconeService
 
-def process_and_embed_text(scraped_page_id: str, page_text_content: str, task_id: str, url: str) -> None:
+def process_and_embed_text(scraped_page_id: str, user_id: str, page_text_content: str, task_id: str, url: str) -> None:
     """
     Processes text content by chunking it, generating embeddings, and storing them.
 
     Args:
         scraped_page_id (str): The ID of the scraped page.
+        user_id (str): The ID of the user associated with the content.
         page_text_content (str): The extracted text content of the page.
         task_id (str): The ID of the scraping task.
         url (str): The URL of the page being processed.
@@ -37,7 +38,7 @@ def process_and_embed_text(scraped_page_id: str, page_text_content: str, task_id
     for i, chunk in enumerate(chunks):
         try:
             embedding = get_embedding(chunk)
-            chunk_id = insert_text_chunk_with_embedding(scraped_page_id, chunk, embedding)
+            chunk_id = insert_text_chunk_with_embedding(scraped_page_id, user_id, chunk, embedding) # Pass user_id
             if chunk_id:
                 logging.info(f"Inserted chunk {i+1}/{len(chunks)} for {url} into Supabase with chunk_id {chunk_id}.")
                 

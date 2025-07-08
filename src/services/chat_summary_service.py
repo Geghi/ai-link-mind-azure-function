@@ -1,5 +1,5 @@
 import logging
-from src.services.supabase_service import get_supabase_client
+from src.services.supabase_service import get_supabase_service_role_client
 from supabase import Client, PostgrestAPIResponse
 
 def upsert_chat_summary(task_id: str, summary_text: str) -> bool:
@@ -8,7 +8,7 @@ def upsert_chat_summary(task_id: str, summary_text: str) -> bool:
     If a summary for the task_id already exists, it updates the existing one.
     Otherwise, it inserts a new one.
     """
-    supabase: Client = get_supabase_client()
+    supabase: Client = get_supabase_service_role_client()
     try:
         # Attempt to update first (if a unique constraint was on task_id, this would be an upsert)
         # Since task_id is no longer unique, we'll always insert a new record
@@ -35,14 +35,15 @@ def upsert_chat_summary(task_id: str, summary_text: str) -> bool:
         logging.error(f"Error upserting chat summary for task_id {task_id}: {e}", exc_info=True)
         return False
 
-def get_chat_summary(task_id: str) -> str | None:
+def get_chat_summary(task_id: str, user_id: str) -> str | None:
     """
     Retrieves the latest chat summary for a given task_id from the chat_summaries table.
     """
-    supabase: Client = get_supabase_client()
+    supabase: Client = get_supabase_service_role_client()
     try:
         response: PostgrestAPIResponse = supabase.from_('chat_summaries').select("summary_text") \
             .eq("task_id", task_id) \
+            .eq("user_id", user_id) \
             .order("created_at", desc=True) \
             .limit(1) \
             .execute()

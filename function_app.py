@@ -1,15 +1,12 @@
 import azure.functions as func
 import logging
 from src.services.scraper import get_internal_links, get_page_text_content, get_page_html_content
-from src.services.supabase_service import get_supabase_client
 from src.services.scraped_pages_service import insert_scraped_page, update_scraped_page_status
 from src.services.embedding_service import process_and_embed_text # New import for embedding service
-from src.utils import json_response, parse_queue_message, process_internal_links, parse_http_request, parse_service_bus_message
+from src.utils import json_response, parse_queue_message, process_internal_links, parse_http_request
 import json 
 
 app = func.FunctionApp()
-
-supabase = get_supabase_client()
 
 @app.queue_trigger(arg_name="azqueue", queue_name="scrape-queue",
                    connection="AzureWebJobsStorage")
@@ -24,9 +21,10 @@ def ScrapeUrlRecursive(azqueue: func.QueueMessage, output_queue: func.Out[str]) 
     payload = parse_queue_message(azqueue)
     if not payload:
         return
-
+    
     task_id = payload['task_id']
     url = payload['url']
+    user_id = payload['user_id'] # New: Get user_id from payload
     depth = payload['depth']
     max_depth = payload['max_depth']
     scraped_page_id = payload['scraped_page_id']
@@ -47,14 +45,14 @@ def ScrapeUrlRecursive(azqueue: func.QueueMessage, output_queue: func.Out[str]) 
 
     if page_text_content:
         update_scraped_page_status(task_id, url, "Processing", page_text_content=page_text_content)
-        process_and_embed_text(scraped_page_id, page_text_content, task_id, url)
+        process_and_embed_text(scraped_page_id, user_id, page_text_content, task_id, url) # Pass user_id
     else:
         logging.warning(f"No text content to chunk for {url}.")
-
+    
     internal_links = get_internal_links(url, url, html_content)
     logging.info(f"Found internal links at {url}: {internal_links}")
 
-    process_internal_links(task_id, url, depth, max_depth, internal_links, output_queue)
+    process_internal_links(task_id, user_id, url, depth, max_depth, internal_links, output_queue) # Pass user_id
 
     update_scraped_page_status(task_id, url, "Completed")
     logging.info(f"Processed {url} at depth {depth}. Status: Completed.")
@@ -75,20 +73,21 @@ def ScrapeUrl(req: func.HttpRequest, output_queue: func.Out[str]) -> func.HttpRe
 
     url = payload['url']
     task_id = payload['task_id']
+    user_id = payload['user_id']
     max_depth = payload['max_depth']
 
-    logging.info(f"Received request for URL: {url}, Task ID: {task_id}")
+    logging.info(f"Received request for URL: {url}, Task ID: {task_id}, User ID: {user_id}") # Update log
 
     try:
-        scraped_page_id = insert_scraped_page(task_id, url, "Queued")
+        scraped_page_id = insert_scraped_page(task_id, user_id, url, "Queued") # Pass user_id
         if scraped_page_id is None:
-            logging.error(f"Failed to create initial scraped page entry for {url} for task {task_id}.")
+            logging.error(f"Failed to create initial scraped page entry for {url} for task {task_id}, user {user_id}.") # Update log
             return json_response(f"Failed to create initial scraped page entry for {url}.", 500)
 
-        initial_payload: dict = {"task_id": task_id, "url": url, "depth": 0, "max_depth": max_depth, "scraped_page_id": scraped_page_id}
+        initial_payload: dict = {"task_id": task_id, "url": url, "user_id": user_id, "depth": 0, "max_depth": max_depth, "scraped_page_id": scraped_page_id} # Pass user_id
         output_queue.set(json.dumps(initial_payload))
     except Exception as e:
-        logging.error(f"Failed to process initial request for {url} for task {task_id}: {e}", exc_info=True)
+        logging.error(f"Failed to process initial request for {url} for task {task_id}, user {user_id}: {e}", exc_info=True) # Update log
         return json_response(f"Failed to start scraping for {url}.", 500)
 
     return json_response(f"Initiated scraping for URL: {url}.", 202)
@@ -118,6 +117,7 @@ def PerformRAG(req: func.HttpRequest) -> func.HttpResponse:
 
     messages: list[dict] = req_body.get('messages', [])
     task_id: str | None = req_body.get('task_id') # Optional task_id for filtering and summary persistence
+    user_id: str | None = req_body.get('user_id') # New: Optional user_id for filtering Pinecone results
 
     if not messages:
         logging.error("No 'messages' list provided in the request body.")
@@ -138,8 +138,13 @@ def PerformRAG(req: func.HttpRequest) -> func.HttpResponse:
         # Add RAG context
         query_embedding = get_embedding(current_user_query)
         pinecone_service = PineconeService()
-        pinecone_filters = {"task_id": task_id} if task_id else None
-        pinecone_results = pinecone_service.query_vectors(query_embedding, top_k=5, filters=pinecone_filters)
+        
+        pinecone_filters = {}
+        if task_id:
+            pinecone_filters["task_id"] = task_id
+        
+        
+        pinecone_results = pinecone_service.query_vectors(query_embedding, top_k=5, filters=pinecone_filters if pinecone_filters else None)
         
         logging.info(f"Pinecone query results: {pinecone_results}") # Added log
         
@@ -167,8 +172,8 @@ def PerformRAG(req: func.HttpRequest) -> func.HttpResponse:
                 f"{rag_context}\n\n"
                 "Information retrieved from the provided URLs is publicly accessible. You may directly state any information, "
                 "including contact details like email addresses, found within the context.\n\n"
-                "At the end of your response, provide a list of the URLs from which you retrieved information, "
-                "formatted as 'Sources: [URL1, URL2, ...]'."
+                # "At the end of your response, provide a list of the URLs from which you retrieved information, "
+                # "formatted as 'Sources: [URL1, URL2, ...]'."
             )
             final_messages_for_llm.append({"role": "system", "content": system_prompt_content})
         else:
@@ -177,8 +182,9 @@ def PerformRAG(req: func.HttpRequest) -> func.HttpResponse:
 
         # Add persistent summary
         if task_id:
-            existing_summary = get_chat_summary(task_id)
+            existing_summary = get_chat_summary(task_id, user_id)
             if existing_summary:
+                logging.info(f"Retrieved existing summary for task {task_id}: {existing_summary}") # Added log
                 final_messages_for_llm.append({"role": "system", "content": f"Previous Conversation Summary: {existing_summary}"})
 
         # 2. Build conversation history for LLM, ensuring no messages are lost
@@ -219,57 +225,3 @@ def PerformRAG(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         logging.error(f"Error performing RAG with conversation memory for query '{current_user_query}': {e}", exc_info=True)
         return json_response(f"An error occurred while processing your request: {e}", 500)
-
-
-# @app.timer_trigger(schedule="*/2 * * * * *", arg_name="myTimer", run_on_startup=False)
-# def ProcessServiceBusLeafNodes(myTimer: func.TimerRequest) -> None:
-#     """
-#     """
-#     logging.info('Python timer trigger function processed a request to dequeue Service Bus messages.')
-
-#     if myTimer.past_due:
-#         logging.info('The timer is past due!')
-
-#     try:
-#         message = receive_single_message_from_service_bus(receiver)
-#         print(f"Received message: {message}")
-#         if not message:
-#             logging.info("No messages to dequeue from Service Bus.")
-#             return
-
-#         try:
-#             payload = parse_service_bus_message(message)
-#             if not payload:
-#                 dead_letter_message(receiver, message, reason="InvalidPayload", description="Service Bus message payload could not be parsed.")
-#                 return
-
-#             task_id = payload['task_id']
-#             url = payload['url']
-#             scraped_page_id = payload['scraped_page_id']
-            
-#             logging.info(f"Dequeued Service Bus message for URL: {url}, Task ID: {task_id}, Scraped Page ID: {scraped_page_id}")
-
-#             html_content = get_page_html_content(url)
-#             if not html_content:
-#                 logging.error(f"Failed to retrieve HTML content for {url} from Service Bus. Skipping further processing.", exc_info=True)
-#                 update_scraped_page_status(task_id, url, "Failed")
-#                 dead_letter_message(receiver, message, reason="HTMLRetrievalFailed", description=f"Failed to retrieve HTML content for {url}.")
-#                 return
-            
-#             page_text_content = get_page_text_content(html_content)
-            
-#             if page_text_content:
-#                 update_scraped_page_status(task_id, url, "Processing", page_text_content=page_text_content)
-#                 process_and_embed_text(scraped_page_id, page_text_content, task_id, url)
-#             else:
-#                 logging.warning(f"No text content to chunk for {url} from Service Bus message.")
-#             update_scraped_page_status(task_id, url, "Completed")
-            
-#             complete_message(receiver, message)
-            
-#         except Exception as e:
-#             logging.error(f"Error processing Service Bus message: {e}", exc_info=True)
-#             dead_letter_message(receiver, message, reason="ProcessingError", description=str(e))
-            
-#     except Exception as e:
-#         logging.error(f"Error in ProcessServiceBusLeafNodes: {e}", exc_info=True)

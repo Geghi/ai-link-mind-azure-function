@@ -36,10 +36,10 @@ The application recursively scrapes a website, extracts text, generates OpenAI e
 ## Data Models (Supabase Tables)
 
 *   **`scraped_pages`**:
-    *   `id`, `task_id`, `url`, `status` ("Queued", "Processing", "Completed", "Failed"), `page_text_content`, `created_at`.
+    *   `id`, `task_id`, `user_id`, `url`, `status` ("Queued", "Processing", "Completed", "Failed"), `page_text_content`, `created_at`.
     *   **Note:** A unique constraint on `(task_id, url)` is required for `upsert` operations.
 *   **`page_chunks`**:
-    *   `id`, `scraped_page_id` (FK), `chunk_text`, `embedding`, `created_at`.
+    *   `id`, `scraped_page_id` (FK), `user_id`, `chunk_text`, `embedding`, `created_at`.
 *   **`chat_summaries`**:
     *   `id`, `task_id`, `summary_text`, `created_at`, `updated_at`.
     *   **Note:** Stores a history of conversation summaries for a given `task_id`. The latest summary is retrieved for context.

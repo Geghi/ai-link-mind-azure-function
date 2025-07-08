@@ -1,11 +1,13 @@
 import logging
-from src.services.supabase_service import get_supabase_client
+from src.services.supabase_service import get_supabase_client, get_supabase_service_role_client
 
 supabase = get_supabase_client()
+supabase_service_role = get_supabase_service_role_client()
 
-def get_scraped_urls_for_task(task_id: str) -> set[str]:
+def get_scraped_urls_for_task(task_id: str, user_id: str) -> set[str]:
     """
     Retrieves all URLs already scraped or queued for a given task_id.
+    Uses the service role client to bypass RLS for internal checks.
 
     Args:
         task_id (str): The ID of the scraping task.
@@ -14,7 +16,8 @@ def get_scraped_urls_for_task(task_id: str) -> set[str]:
         set[str]: A set of URLs associated with the task.
     """
     try:
-        response = supabase.table('scraped_pages').select('url').eq('task_id', task_id).execute()
+        # Use supabase_service_role to bypass RLS for this internal check
+        response = supabase_service_role.table('scraped_pages').select('url').eq('task_id', task_id).eq("user_id", user_id).execute()
         if response.data:
             return {record['url'] for record in response.data}
         return set()
@@ -22,12 +25,14 @@ def get_scraped_urls_for_task(task_id: str) -> set[str]:
         logging.error(f"Error retrieving scraped URLs for task {task_id}: {e}", exc_info=True)
         return set()
 
-def insert_scraped_page(task_id: str, url: str, status: str) -> int | None:
+def insert_scraped_page(task_id: str, user_id: str, url: str, status: str) -> int | None:
     """
     Inserts a new scraped page entry or updates an existing one using upsert.
+    Uses the service role client to bypass RLS for initial data creation.
 
     Args:
         task_id (str): The ID of the scraping task.
+        user_id (str): The ID of the user associated with the task.
         url (str): The URL of the page that was scraped.
         status (str): The initial status of the scraped page (e.g., "Queued", "Processing").
 
@@ -35,25 +40,25 @@ def insert_scraped_page(task_id: str, url: str, status: str) -> int | None:
         int | None: The ID of the inserted or updated scraped page, or None if an error occurs.
     """
     try:
-        data_to_upsert = {"task_id": task_id, "url": url, "status": status}
+        data_to_upsert = {"task_id": task_id, "user_id": user_id, "url": url, "status": status} # Add user_id
         
         # Use upsert to insert if not exists, or update if exists based on task_id and url
-        upsert_response = supabase.table('scraped_pages').upsert(data_to_upsert, on_conflict='task_id,url').execute()
+        upsert_response = supabase_service_role.table('scraped_pages').upsert(data_to_upsert, on_conflict='task_id,url').execute()
         
         if upsert_response.data:
-            logging.info(f"Upserted scraped page: Task ID: {task_id}, URL: {url}, Status: {status}")
+            logging.info(f"Upserted scraped page: Task ID: {task_id}, User ID: {user_id}, URL: {url}, Status: {status}") # Update log
             return upsert_response.data[0]['id']
         else:
             logging.error(f"Failed to upsert scraped page: {upsert_response.status_code} - {upsert_response.text}", exc_info=True)
             return None
     except Exception as e:
-        logging.error(f"Error upserting scraped page (Task ID: {task_id}, URL: {url}): {e}", exc_info=True)
+        logging.error(f"Error upserting scraped page (Task ID: {task_id}, User ID: {user_id}, URL: {url}): {e}", exc_info=True) # Update log
         return None
 
 def update_scraped_page_status(task_id: str, url: str, status: str, page_text_content: str = None) -> bool:
     """
     Updates the status and optionally the text content of an existing scraped page entry
-    in the 'scraped_pages' table.
+    in the 'scraped_pages' table. Uses the service role client to bypass RLS.
 
     Args:
         task_id (str): The ID of the scraping task.
@@ -69,7 +74,7 @@ def update_scraped_page_status(task_id: str, url: str, status: str, page_text_co
         if page_text_content is not None:
             data_to_update["page_text_content"] = page_text_content
 
-        response = supabase.table('scraped_pages').update(data_to_update).eq('task_id', task_id).eq('url', url).execute()
+        response = supabase_service_role.table('scraped_pages').update(data_to_update).eq('task_id', task_id).eq('url', url).execute()
         if response.data:
             logging.info(f"Updated scraped page: Task ID: {task_id}, URL: {url}, Status: {status}")
             return True
@@ -80,12 +85,14 @@ def update_scraped_page_status(task_id: str, url: str, status: str, page_text_co
         logging.error(f"Error updating scraped page (Task ID: {task_id}, URL: {url}): {e}", exc_info=True)
         return False
 
-def insert_text_chunk_with_embedding(scraped_page_id: int, chunk_text: str, embedding: list) -> int | None:
+def insert_text_chunk_with_embedding(scraped_page_id: int, user_id: str, chunk_text: str, embedding: list) -> int | None:
     """
     Inserts a text chunk and its embedding into the 'page_chunks' table.
+    Uses the service role client to bypass RLS.
 
     Args:
         scraped_page_id (int): The foreign key linking to the 'scraped_pages' table.
+        user_id (str): The ID of the user associated with the chunk.
         chunk_text (str): The text content of the chunk.
         embedding (list): The OpenAI embedding for the text chunk.
 
@@ -95,37 +102,18 @@ def insert_text_chunk_with_embedding(scraped_page_id: int, chunk_text: str, embe
     try:
         data_to_insert = {
             "scraped_page_id": scraped_page_id,
+            "user_id": user_id,
             "chunk_text": chunk_text,
             "embedding": embedding,
         }
-        response = supabase.table('page_chunks').insert(data_to_insert).execute()
+        response = supabase_service_role.table('page_chunks').insert(data_to_insert).execute()
         if response.data:
             chunk_id = response.data[0]['id']
-            logging.info(f"Inserted text chunk for scraped_page_id {scraped_page_id} with chunk_id {chunk_id}.")
+            logging.info(f"Inserted text chunk for scraped_page_id {scraped_page_id}, user_id {user_id} with chunk_id {chunk_id}.") # Update log
             return chunk_id
         else:
-            logging.error(f"Failed to insert text chunk for scraped_page_id {scraped_page_id}: {response.status_code} - {response.text}", exc_info=True)
+            logging.error(f"Failed to insert text chunk for scraped_page_id {scraped_page_id}, user_id {user_id}: {response.status_code} - {response.text}", exc_info=True) # Update log
             return None
     except Exception as e:
-        logging.error(f"Error inserting text chunk for scraped_page_id {scraped_page_id}: {e}", exc_info=True)
-        return None
-
-def get_scraped_page_by_task_url(task_id: str, url: str) -> dict | None:
-    """
-    Retrieves a scraped page entry by task_id and URL.
-
-    Args:
-        task_id (str): The ID of the scraping task.
-        url (str): The URL of the page.
-
-    Returns:
-        dict | None: The scraped page data, or None if not found or an error occurs.
-    """
-    try:
-        response = supabase.table('scraped_pages').select('*').eq('task_id', task_id).eq('url', url).limit(1).execute()
-        if response.data:
-            return response.data[0]
-        return None
-    except Exception as e:
-        logging.error(f"Error retrieving scraped page for task {task_id}, URL {url}: {e}", exc_info=True)
+        logging.error(f"Error inserting text chunk for scraped_page_id {scraped_page_id}, user_id {user_id}: {e}", exc_info=True) # Update log
         return None

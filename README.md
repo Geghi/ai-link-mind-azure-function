@@ -79,7 +79,8 @@ These environment variables can be configured in the `local.settings.json` file 
     }
     ```
 
-3.  **Run the Function App Locally**:
+4.  **Run the Function App Locally**:
+Ensure Azurite is running locally. You can start it via Docker, VS Code extension, or by running the `azurite` command if installed globally. This is essential for local queue storage operations.
 
     ```bash
     func host start

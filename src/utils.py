@@ -2,7 +2,6 @@ import json
 import logging
 import azure.functions as func
 from azure.functions import Out
-from azure.servicebus import ServiceBusReceivedMessage
 from src.services.scraped_pages_service import insert_scraped_page, get_scraped_urls_for_task
 
 import tiktoken
@@ -70,21 +69,22 @@ def parse_queue_message(azqueue: func.QueueMessage) -> dict | None:
 
     task_id = req_body.get('task_id')
     url = req_body.get('url')
+    user_id = req_body.get('user_id') # New: Get user_id from queue message
     depth = req_body.get('depth', 0)
     max_depth = req_body.get('max_depth', 2)
     scraped_page_id = req_body.get('scraped_page_id')
 
-    if not all([task_id, url, scraped_page_id is not None]):
-        logging.error("Missing 'task_id', 'url', or 'scraped_page_id' in queue message. Cannot process.")
+    if not all([task_id, url, user_id, scraped_page_id is not None]): # New: user_id is now required
+        logging.error("Missing 'task_id', 'url', 'user_id', or 'scraped_page_id' in queue message. Cannot process.")
         return None
     
-    return {"task_id": task_id, "url": url, "depth": depth, "max_depth": max_depth, "scraped_page_id": scraped_page_id}
+    return {"task_id": task_id, "url": url, "user_id": user_id, "depth": depth, "max_depth": max_depth, "scraped_page_id": scraped_page_id}
 
-def process_internal_links(task_id: str, current_url: str, depth: int, max_depth: int, internal_links: list[str], output_queue: func.Out[str]) -> None:
+def process_internal_links(task_id: str, user_id: str, current_url: str, depth: int, max_depth: int, internal_links: list[str], output_queue: func.Out[str]) -> None:
     """Helper to process internal links found on a page."""
     
     # Fetch all existing URLs for the current task once
-    existing_urls = get_scraped_urls_for_task(task_id)
+    existing_urls = get_scraped_urls_for_task(task_id, user_id)
     logging.info(f"Fetched {len(existing_urls)} existing URLs for task {task_id}.")
     
     messages = []
@@ -94,11 +94,11 @@ def process_internal_links(task_id: str, current_url: str, depth: int, max_depth
                 logging.info(f"Link {link} already exists for task {task_id}. Skipping upsert and queueing.")
                 continue # Skip if already processed
 
-            new_scraped_page_id = insert_scraped_page(task_id, link, "Queued")
+            new_scraped_page_id = insert_scraped_page(task_id, user_id, link, "Queued") # Pass user_id
             if new_scraped_page_id:
                 existing_urls.add(link) 
                 if depth + 1 <= max_depth:
-                    next_payload: dict = {"task_id": task_id, "url": link, "depth": depth + 1, "max_depth": max_depth, "scraped_page_id": new_scraped_page_id}
+                    next_payload: dict = {"task_id": task_id, "url": link, "user_id": user_id, "depth": depth + 1, "max_depth": max_depth, "scraped_page_id": new_scraped_page_id} # Pass user_id
                     messages.append(next_payload)
 
             else:
@@ -120,28 +120,11 @@ def parse_http_request(req: func.HttpRequest) -> dict | func.HttpResponse:
 
     url = req_body.get('url')
     task_id = req_body.get('task_id')
+    user_id = req_body.get('user_id') # New: Get user_id from request
     max_depth = req_body.get('max_depth', 2)
 
-    if not all([url, task_id]):
-        logging.error("Missing 'url' or 'task_id' in HTTP request payload.")
-        return json_response("Please pass 'url' and 'task_id' in the JSON payload.", 400)
+    if not all([url, task_id, user_id]): # New: user_id is now required
+        logging.error("Missing 'url', 'task_id', or 'user_id' in HTTP request payload.")
+        return json_response("Please pass 'url', 'task_id', and 'user_id' in the JSON payload.", 400)
     
-    return {"url": url, "task_id": task_id, "max_depth": max_depth}
-
-def parse_service_bus_message(message: ServiceBusReceivedMessage) -> dict | None:
-    """Helper to parse and validate Service Bus message payload."""
-    try:
-        message_body = json.loads(str(message))
-    except ValueError as e:
-        logging.error(f"Invalid JSON payload in Service Bus message: {e}", exc_info=True)
-        return None
-
-    task_id = message_body.get('task_id')
-    url = message_body.get('url')
-    scraped_page_id = message_body.get('scraped_page_id')
-
-    if not all([task_id, url, scraped_page_id is not None]):
-        logging.error("Missing 'task_id', 'url', or 'scraped_page_id' in Service Bus message. Cannot process.")
-        return None
-    
-    return {"task_id": task_id, "url": url, "scraped_page_id": scraped_page_id}
+    return {"url": url, "task_id": task_id, "user_id": user_id, "max_depth": max_depth}
