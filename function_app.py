@@ -1,9 +1,9 @@
 import azure.functions as func
 import logging
 # from src.services.scraper import get_internal_links, get_page_text_content, get_page_html_content
-# from src.services.scraped_pages_service import insert_scraped_page, update_scraped_page_status
+from src.services.scraped_pages_service import insert_scraped_page, update_scraped_page_status
 # from src.services.embedding_service import process_and_embed_text # New import for embedding service
-# from src.utils import json_response, parse_queue_message, process_internal_links, parse_http_request
+from src.utils import json_response, parse_queue_message, process_internal_links, parse_http_request
 import json 
 # from src.services.pinecone_service import PineconeService
 # from src.services.openai_service import get_embedding, get_chat_completion, summarize_conversation
@@ -75,40 +75,40 @@ def HealthCheck(req: func.HttpRequest) -> func.HttpResponse:
 #     update_scraped_page_status(task_id, url, "Completed")
 #     logging.info(f"Processed {url} at depth {depth}. Status: Completed.")
 
-# @app.route(route="ScrapeUrl", auth_level=func.AuthLevel.ANONYMOUS)
-# @app.queue_output(arg_name="output_queue", queue_name="scrape-queue",
-#                   connection="AzureWebJobsStorage")
-# def ScrapeUrl(req: func.HttpRequest, output_queue: func.Out[str]) -> func.HttpResponse:
-#     """
-#     Azure HTTP Trigger function to initiate web scraping.
-#     """
-#     logging.info('Python HTTP trigger function processed a request.')
-#     logging.info(f"Request body: {req.get_body().decode('utf-8')}")
+@app.route(route="ScrapeUrl", auth_level=func.AuthLevel.ANONYMOUS)
+@app.queue_output(arg_name="output_queue", queue_name="scrape-queue",
+                  connection="AzureWebJobsStorage")
+def ScrapeUrl(req: func.HttpRequest, output_queue: func.Out[str]) -> func.HttpResponse:
+    """
+    Azure HTTP Trigger function to initiate web scraping.
+    """
+    logging.info('Python HTTP trigger function processed a request.')
+    logging.info(f"Request body: {req.get_body().decode('utf-8')}")
     
-#     # payload = parse_http_request(req)
-#     # if isinstance(payload, func.HttpResponse):
-#     #     return payload # Return error response if parsing failed
+    payload = parse_http_request(req)
+    if isinstance(payload, func.HttpResponse):
+        return payload # Return error response if parsing failed
 
-#     # url = payload['url']
-#     # task_id = payload['task_id']
-#     # user_id = payload['user_id']
-#     # max_depth = payload['max_depth']
+    url = payload['url']
+    task_id = payload['task_id']
+    user_id = payload['user_id']
+    max_depth = payload['max_depth']
 
-#     # logging.info(f"Received request for URL: {url}, Task ID: {task_id}, User ID: {user_id}") # Update log
+    logging.info(f"Received request for URL: {url}, Task ID: {task_id}, User ID: {user_id}") # Update log
 
-#     # try:
-#     #     scraped_page_id = insert_scraped_page(task_id, user_id, url, "Queued") # Pass user_id
-#     #     if scraped_page_id is None:
-#     #         logging.error(f"Failed to create initial scraped page entry for {url} for task {task_id}, user {user_id}.") # Update log
-#     #         return json_response(f"Failed to create initial scraped page entry for {url}.", 500)
+    try:
+        scraped_page_id = insert_scraped_page(task_id, user_id, url, "Queued") # Pass user_id
+        if scraped_page_id is None:
+            logging.error(f"Failed to create initial scraped page entry for {url} for task {task_id}, user {user_id}.") # Update log
+            return json_response(f"Failed to create initial scraped page entry for {url}.", 500)
 
-#     #     initial_payload: dict = {"task_id": task_id, "url": url, "user_id": user_id, "depth": 0, "max_depth": max_depth, "scraped_page_id": scraped_page_id} # Pass user_id
-#     #     output_queue.set(json.dumps(initial_payload))
-#     # except Exception as e:
-#     #     logging.error(f"Failed to process initial request for {url} for task {task_id}, user {user_id}: {e}", exc_info=True) # Update log
-#     #     return json_response(f"Failed to start scraping for {url}.", 500)
-#     # return json_response(f"Initiated scraping for URL: {url}.", 202)
-#     return None
+        initial_payload: dict = {"task_id": task_id, "url": url, "user_id": user_id, "depth": 0, "max_depth": max_depth, "scraped_page_id": scraped_page_id} # Pass user_id
+        output_queue.set(json.dumps(initial_payload))
+    except Exception as e:
+        logging.error(f"Failed to process initial request for {url} for task {task_id}, user {user_id}: {e}", exc_info=True) # Update log
+        return json_response(f"Failed to start scraping for {url}.", 500)
+    return json_response(f"Initiated scraping for URL: {url}.", 202)
+    return None
 
 
 
