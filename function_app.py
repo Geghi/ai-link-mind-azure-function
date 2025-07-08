@@ -6,6 +6,11 @@ from src.services.embedding_service import process_and_embed_text # New import f
 from src.utils import json_response, parse_queue_message, process_internal_links, parse_http_request
 import json 
 
+logging.basicConfig(level=logging.INFO)
+logging.getLogger().setLevel(logging.INFO)
+
+logging.info("Azure Function App is starting...")
+
 app = func.FunctionApp()
 
 @app.route(route="health", auth_level=func.AuthLevel.ANONYMOUS, methods=["GET"])
