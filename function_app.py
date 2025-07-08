@@ -57,7 +57,7 @@ def ScrapeUrlRecursive(azqueue: func.QueueMessage, output_queue: func.Out[str]) 
     update_scraped_page_status(task_id, url, "Completed")
     logging.info(f"Processed {url} at depth {depth}. Status: Completed.")
 
-@app.route(route="ScrapeUrl", auth_level=func.AuthLevel.FUNCTION)
+@app.route(route="ScrapeUrl", auth_level=func.AuthLevel.ANONYMOUS)
 @app.queue_output(arg_name="output_queue", queue_name="scrape-queue",
                   connection="AzureWebJobsStorage")
 def ScrapeUrl(req: func.HttpRequest, output_queue: func.Out[str]) -> func.HttpResponse:
@@ -100,7 +100,7 @@ from src.utils import count_tokens
 # Define constants for token management
 MAX_CONVERSATION_TOKENS = 3000  # Max tokens for the entire conversation history (including summary and RAG context)
 
-@app.route(route="PerformRAG", auth_level=func.AuthLevel.FUNCTION)
+@app.route(route="PerformRAG", auth_level=func.AuthLevel.ANONYMOUS)
 def PerformRAG(req: func.HttpRequest) -> func.HttpResponse:
     """
     Azure HTTP Trigger function to perform RAG (Retrieval Augmented Generation) with conversation memory.
