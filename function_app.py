@@ -1,8 +1,8 @@
 import azure.functions as func
 import logging
-from src.services.scraper import get_internal_links, get_page_text_content, get_page_html_content
+# from src.services.scraper import get_internal_links, get_page_text_content, get_page_html_content
 from src.services.scraped_pages_service import insert_scraped_page, update_scraped_page_status
-from src.services.embedding_service import process_and_embed_text # New import for embedding service
+# from src.services.embedding_service import process_and_embed_text # New import for embedding service
 from src.utils import json_response, parse_queue_message, process_internal_links, parse_http_request
 import json 
 
@@ -21,54 +21,54 @@ def HealthCheck(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Health check HTTP trigger function processed a request.')
     return func.HttpResponse("Azure Function Status: OK", status_code=200)
 
-@app.queue_trigger(arg_name="azqueue", queue_name="scrape-queue",
-                   connection="AzureWebJobsStorage")
-@app.queue_output(arg_name="output_queue", queue_name="scrape-queue",
-                   connection="AzureWebJobsStorage")
-def ScrapeUrlRecursive(azqueue: func.QueueMessage, output_queue: func.Out[str]) -> None:
-    """
-    Azure Queue Trigger function for recursive web scraping.
-    """
-    logging.info('Python queue trigger function processed a request for recursive scraping.')
-    logging.info(f"Queue message body: {azqueue.get_body().decode('utf-8')}")
-    payload = parse_queue_message(azqueue)
-    if not payload:
-        return
+# @app.queue_trigger(arg_name="azqueue", queue_name="scrape-queue",
+#                    connection="AzureWebJobsStorage")
+# @app.queue_output(arg_name="output_queue", queue_name="scrape-queue",
+#                    connection="AzureWebJobsStorage")
+# def ScrapeUrlRecursive(azqueue: func.QueueMessage, output_queue: func.Out[str]) -> None:
+#     """
+#     Azure Queue Trigger function for recursive web scraping.
+#     """
+#     logging.info('Python queue trigger function processed a request for recursive scraping.')
+#     logging.info(f"Queue message body: {azqueue.get_body().decode('utf-8')}")
+#     payload = parse_queue_message(azqueue)
+#     if not payload:
+#         return
     
-    task_id = payload['task_id']
-    url = payload['url']
-    user_id = payload['user_id'] # New: Get user_id from payload
-    depth = payload['depth']
-    max_depth = payload['max_depth']
-    scraped_page_id = payload['scraped_page_id']
+#     task_id = payload['task_id']
+#     url = payload['url']
+#     user_id = payload['user_id'] # New: Get user_id from payload
+#     depth = payload['depth']
+#     max_depth = payload['max_depth']
+#     scraped_page_id = payload['scraped_page_id']
 
-    if depth > max_depth:
-        logging.info(f"Max depth reached for {url} at depth {depth}. Marking as completed.")
-        update_scraped_page_status(task_id, url, "Completed")
-        return
+#     if depth > max_depth:
+#         logging.info(f"Max depth reached for {url} at depth {depth}. Marking as completed.")
+#         update_scraped_page_status(task_id, url, "Completed")
+#         return
 
-    html_content = get_page_html_content(url)
-    if not html_content:
-        logging.error(f"Failed to retrieve HTML content for {url}. Skipping further processing.", exc_info=True)
-        update_scraped_page_status(task_id, url, "Failed")
-        return
+#     html_content = get_page_html_content(url)
+#     if not html_content:
+#         logging.error(f"Failed to retrieve HTML content for {url}. Skipping further processing.", exc_info=True)
+#         update_scraped_page_status(task_id, url, "Failed")
+#         return
     
-    page_text_content = get_page_text_content(html_content)
-    logging.info(f"Fetched content for {url}. Length: {len(page_text_content)} characters.")
+#     page_text_content = get_page_text_content(html_content)
+#     logging.info(f"Fetched content for {url}. Length: {len(page_text_content)} characters.")
 
-    if page_text_content:
-        update_scraped_page_status(task_id, url, "Processing", page_text_content=page_text_content)
-        process_and_embed_text(scraped_page_id, user_id, page_text_content, task_id, url) # Pass user_id
-    else:
-        logging.warning(f"No text content to chunk for {url}.")
+#     if page_text_content:
+#         update_scraped_page_status(task_id, url, "Processing", page_text_content=page_text_content)
+#         process_and_embed_text(scraped_page_id, user_id, page_text_content, task_id, url) # Pass user_id
+#     else:
+#         logging.warning(f"No text content to chunk for {url}.")
     
-    internal_links = get_internal_links(url, url, html_content)
-    logging.info(f"Found internal links at {url}: {internal_links}")
+#     internal_links = get_internal_links(url, url, html_content)
+#     logging.info(f"Found internal links at {url}: {internal_links}")
 
-    process_internal_links(task_id, user_id, url, depth, max_depth, internal_links, output_queue) # Pass user_id
+#     process_internal_links(task_id, user_id, url, depth, max_depth, internal_links, output_queue) # Pass user_id
 
-    update_scraped_page_status(task_id, url, "Completed")
-    logging.info(f"Processed {url} at depth {depth}. Status: Completed.")
+#     update_scraped_page_status(task_id, url, "Completed")
+#     logging.info(f"Processed {url} at depth {depth}. Status: Completed.")
 
 @app.route(route="ScrapeUrl", auth_level=func.AuthLevel.ANONYMOUS)
 @app.queue_output(arg_name="output_queue", queue_name="scrape-queue",
