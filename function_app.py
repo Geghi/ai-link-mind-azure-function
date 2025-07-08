@@ -19,7 +19,7 @@ def HealthCheck(req: func.HttpRequest) -> func.HttpResponse:
     Azure HTTP Trigger function for health checks.
     """
     logging.info('Health check HTTP trigger function processed a request.')
-    return func.HttpResponse("OK", status_code=200)
+    return func.HttpResponse("Azure Function Status: OK", status_code=200)
 
 @app.queue_trigger(arg_name="azqueue", queue_name="scrape-queue",
                    connection="AzureWebJobsStorage")
