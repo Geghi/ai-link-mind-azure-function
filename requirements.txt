@@ -7,3 +7,7 @@ requests
 beautifulsoup4
 supabase
 azure-servicebus
+openai
+pinecone
+azure-storage-queue
+tiktoken
