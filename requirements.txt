@@ -2,11 +2,11 @@
 # The Python Worker is managed by the Azure Functions platform
 # Manually managing azure-functions-worker may cause unexpected issues
 
-azure-functions
-requests
-beautifulsoup4
-supabase
-openai
-pinecone
-azure-storage-queue
-tiktoken
+azure-functions==1.23.0
+requests==2.32.4
+beautifulsoup4==4.13.4
+supabase==2.16.0
+openai==1.93.0
+pinecone-client==7.3.0
+azure-storage-queue==12.12.0
+tiktoken==0.9.0
