@@ -1,5 +1,11 @@
 import azure.functions as func
 import logging
+import sys
+import os
+
+# Add the project root to the Python path to enable absolute imports from 'src'
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))ù
+
 # from src.services.scraper import get_internal_links, get_page_text_content, get_page_html_content
 from src.services.scraped_pages_service import insert_scraped_page, update_scraped_page_status
 # from src.services.embedding_service import process_and_embed_text # New import for embedding service
