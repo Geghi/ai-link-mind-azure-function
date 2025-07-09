@@ -2,15 +2,14 @@ import azure.functions as func
 import logging
 import sys
 import os
+import json 
 
-# Add the project root to the Python path to enable absolute imports from 'src'
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+from supabase_service import get_supabase_service_role_client
+from scraped_pages_service import insert_scraped_page, update_scraped_page_status
 
 # from scraper import get_internal_links, get_page_text_content, get_page_html_content
-from scraped_pages_service import insert_scraped_page, update_scraped_page_status
 # from embedding_service import process_and_embed_text # New import for embedding service
 # from src.utils import json_response, parse_queue_message, process_internal_links, parse_http_request
-import json 
 # from pinecone_service import PineconeService
 # from openai_service import get_embedding, get_chat_completion, summarize_conversation
 # from chat_summary_service import get_chat_summary, upsert_chat_summary
@@ -90,6 +89,8 @@ def ScrapeUrl(req: func.HttpRequest, output_queue: func.Out[str]) -> func.HttpRe
     """
     logging.info('Python HTTP trigger function processed a request.')
     logging.info(f"Request body: {req.get_body().decode('utf-8')}")
+    
+    supabase_serivce_role = get_supabase_service_role_client()
     
     # payload = parse_http_request(req)
     # if isinstance(payload, func.HttpResponse):

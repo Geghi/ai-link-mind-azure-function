@@ -2,7 +2,7 @@ import os
 from supabase import create_client, Client
 import logging
 
-def get_supabase_client() :
+def get_supabase_client() -> Client:
     """
     Initializes and returns a Supabase client using the standard Supabase key.
 
@@ -23,7 +23,7 @@ def get_supabase_client() :
         logging.error(f"Error creating Supabase client: {e}", exc_info=True)
         raise # Re-raise the exception after logging
 
-def get_supabase_service_role_client() :
+def get_supabase_service_role_client() -> Client:
     """
     Initializes and returns a Supabase client using the service role key.
     This client bypasses Row Level Security (RLS) and should be used for
