@@ -125,7 +125,7 @@ def ScrapeUrl(req: func.HttpRequest, output_queue: func.Out[str]) -> func.HttpRe
     logging.info('Python HTTP trigger function processed a request.')
     logging.info(f"Request body: {req.get_body().decode('utf-8')}")
     
-    supabase_serivce_role = get_supabase_service_role_client()
+    # supabase_serivce_role = get_supabase_service_role_client()
 
     # payload = parse_http_request(req)
     # if isinstance(payload, func.HttpResponse):
