@@ -14,14 +14,15 @@ def get_supabase_client() -> Client:
     Raises:
         Exception: If there is an error creating the Supabase client.
     """
-    SUPABASE_URL = os.environ.get("SUPABASE_URL")
-    SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-    try:
-        client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        return client
-    except Exception as e:
-        logging.error(f"Error creating Supabase client: {e}", exc_info=True)
-        raise # Re-raise the exception after logging
+    return None
+    # SUPABASE_URL = os.environ.get("SUPABASE_URL")
+    # SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+    # try:
+    #     client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    #     return client
+    # except Exception as e:
+    #     logging.error(f"Error creating Supabase client: {e}", exc_info=True)
+    #     raise # Re-raise the exception after logging
 
 def get_supabase_service_role_client() -> Client:
     """
@@ -38,10 +39,13 @@ def get_supabase_service_role_client() -> Client:
     Raises:
         Exception: If there is an error creating the Supabase service role client.
     """
-    SUPABASE_URL = os.environ.get("SUPABASE_URL")
-    SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-    try:
-        return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    except Exception as e:
-        logging.error(f"Error creating Supabase service role client: {e}", exc_info=True)
-        raise # Re-raise the exception after logging
+    return None
+
+
+    # SUPABASE_URL = os.environ.get("SUPABASE_URL")
+    # SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    # try:
+    #     return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    # except Exception as e:
+    #     logging.error(f"Error creating Supabase service role client: {e}", exc_info=True)
+    #     raise # Re-raise the exception after logging
