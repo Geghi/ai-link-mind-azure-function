@@ -7,7 +7,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
 # from src.services.scraper import get_internal_links, get_page_text_content, get_page_html_content
-from .src.services.scraped_pages_service import insert_scraped_page, update_scraped_page_status
+from src.services.scraped_pages_service import insert_scraped_page, update_scraped_page_status
 # from src.services.embedding_service import process_and_embed_text # New import for embedding service
 # from src.utils import json_response, parse_queue_message, process_internal_links, parse_http_request
 import json 
