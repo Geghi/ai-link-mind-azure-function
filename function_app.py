@@ -114,7 +114,7 @@ def HealthCheck(req: func.HttpRequest) -> func.HttpResponse:
 #     update_scraped_page_status(task_id, url, "Completed")
 #     logging.info(f"Processed {url} at depth {depth}. Status: Completed.")
 
-@app.route(route="ScrapeUrl", auth_level=func.AuthLevel.ANONYMOUS)
+@app.route(route="ScrapeUrl", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET, func.HttpMethod.POST])
 @app.queue_output(arg_name="output_queue", queue_name="scrape-queue",
                   connection="AzureWebJobsStorage")
 def ScrapeUrl(req: func.HttpRequest, output_queue: func.Out[str]) -> func.HttpResponse:
