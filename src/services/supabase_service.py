@@ -1,5 +1,5 @@
 import os
-# from supabase import create_client, Client
+from supabase import create_client, Client
 import logging
 
 def get_supabase_client() :
@@ -14,15 +14,14 @@ def get_supabase_client() :
     Raises:
         Exception: If there is an error creating the Supabase client.
     """
-    return None
-    # SUPABASE_URL = os.environ.get("SUPABASE_URL")
-    # SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-    # try:
-    #     client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    #     return client
-    # except Exception as e:
-    #     logging.error(f"Error creating Supabase client: {e}", exc_info=True)
-    #     raise # Re-raise the exception after logging
+    SUPABASE_URL = os.environ.get("SUPABASE_URL")
+    SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+    try:
+        client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        return client
+    except Exception as e:
+        logging.error(f"Error creating Supabase client: {e}", exc_info=True)
+        raise # Re-raise the exception after logging
 
 def get_supabase_service_role_client() :
     """
@@ -39,13 +38,10 @@ def get_supabase_service_role_client() :
     Raises:
         Exception: If there is an error creating the Supabase service role client.
     """
-    return None
-
-
-    # SUPABASE_URL = os.environ.get("SUPABASE_URL")
-    # SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-    # try:
-    #     return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    # except Exception as e:
-    #     logging.error(f"Error creating Supabase service role client: {e}", exc_info=True)
-    #     raise # Re-raise the exception after logging
+    SUPABASE_URL = os.environ.get("SUPABASE_URL")
+    SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    try:
+        return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    except Exception as e:
+        logging.error(f"Error creating Supabase service role client: {e}", exc_info=True)
+        raise # Re-raise the exception after logging
