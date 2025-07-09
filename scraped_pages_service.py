@@ -1,7 +1,6 @@
 import logging
-from supabase import Client
 
-def get_scraped_urls_for_task(task_id: str, user_id: str, supabase: Client) -> set[str]:
+def get_scraped_urls_for_task(task_id: str, user_id: str, supabase) -> set[str]:
     """
     Retrieves all URLs already scraped or queued for a given task_id.
     Uses the service role client to bypass RLS for internal checks.
@@ -22,7 +21,7 @@ def get_scraped_urls_for_task(task_id: str, user_id: str, supabase: Client) -> s
         logging.error(f"Error retrieving scraped URLs for task {task_id}: {e}", exc_info=True)
         return set()
 
-def insert_scraped_page(task_id: str, user_id: str, url: str, status: str, supabase: Client) -> int | None:
+def insert_scraped_page(task_id: str, user_id: str, url: str, status: str, supabase) -> int | None:
     """
     Inserts a new scraped page entry or updates an existing one using upsert.
     Uses the service role client to bypass RLS for initial data creation.
@@ -52,7 +51,7 @@ def insert_scraped_page(task_id: str, user_id: str, url: str, status: str, supab
         logging.error(f"Error upserting scraped page (Task ID: {task_id}, User ID: {user_id}, URL: {url}): {e}", exc_info=True) # Update log
         return None
 
-def update_scraped_page_status(task_id: str, url: str, status: str, page_text_content: str = None, supabase: Client) -> bool:
+def update_scraped_page_status(task_id: str, url: str, status: str, supabase, page_text_content: str = None) -> bool:
     """
     Updates the status and optionally the text content of an existing scraped page entry
     in the 'scraped_pages' table. Uses the service role client to bypass RLS.
@@ -82,7 +81,7 @@ def update_scraped_page_status(task_id: str, url: str, status: str, page_text_co
         logging.error(f"Error updating scraped page (Task ID: {task_id}, URL: {url}): {e}", exc_info=True)
         return False
 
-def insert_text_chunk_with_embedding(scraped_page_id: int, user_id: str, chunk_text: str, embedding: list, supabase: Client) -> int | None:
+def insert_text_chunk_with_embedding(scraped_page_id: int, user_id: str, chunk_text: str, embedding: list, supabase) -> int | None:
     """
     Inserts a text chunk and its embedding into the 'page_chunks' table.
     Uses the service role client to bypass RLS.
