@@ -1,11 +1,11 @@
 import logging
-from src.services.supabase_service import get_supabase_client, get_supabase_service_role_client
+# from src.services.supabase_service import get_supabase_client, get_supabase_service_role_client
 
 # supabase = get_supabase_client()
 # supabase_service_role = get_supabase_service_role_client()
 
-supabase = None
-supabase_service_role = None
+supabase = None  # Placeholder for the actual Supabase client initialization
+supabase_service_role = None  # Placeholder for the actual Supabase service role client initialization
 
 def get_scraped_urls_for_task(task_id: str, user_id: str) -> set[str]:
     """
