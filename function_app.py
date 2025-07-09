@@ -4,7 +4,7 @@ import sys
 import os
 import json 
 
-from supabase_service import get_supabase_service_role_client
+# from supabase_service import get_supabase_service_role_client
 from scraped_pages_service import insert_scraped_page, update_scraped_page_status
 
 # from scraper import get_internal_links, get_page_text_content, get_page_html_content
@@ -22,6 +22,41 @@ logging.getLogger().setLevel(logging.INFO)
 logging.info("Azure Function App is starting...")
 
 app = func.FunctionApp()
+
+
+@app.route(route="check_env_var", auth_level=func.AuthLevel.ANONYMOUS, methods=["GET"])
+def check_env_var(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+
+    env_var_name = req.params.get('name')
+
+    if not env_var_name:
+        return func.HttpResponse(
+             "Please pass a name in the request body",
+             status_code=400
+        )
+
+    env_var_value = os.environ.get(env_var_name)
+
+    if env_var_value:
+        return func.HttpResponse(
+             json.dumps({
+                 "status": "OK",
+                 "length": len(env_var_value)
+             }),
+             mimetype="application/json",
+             status_code=200
+        )
+    else:
+        return func.HttpResponse(
+             json.dumps({
+                 "status": "KO",
+                 "length": 0
+             }),
+             mimetype="application/json",
+             status_code=200
+        )
+
 
 @app.route(route="health", auth_level=func.AuthLevel.ANONYMOUS, methods=["GET"])
 def HealthCheck(req: func.HttpRequest) -> func.HttpResponse:
@@ -90,8 +125,8 @@ def ScrapeUrl(req: func.HttpRequest, output_queue: func.Out[str]) -> func.HttpRe
     logging.info('Python HTTP trigger function processed a request.')
     logging.info(f"Request body: {req.get_body().decode('utf-8')}")
     
-    supabase_serivce_role = get_supabase_service_role_client()
-    
+    # supabase_serivce_role = get_supabase_service_role_client()
+
     # payload = parse_http_request(req)
     # if isinstance(payload, func.HttpResponse):
     #     return payload # Return error response if parsing failed
