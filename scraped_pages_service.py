@@ -1,9 +1,6 @@
 import logging
-try:
-    from src.services.supabase_service import get_supabase_client, get_supabase_service_role_client
-except ImportError as e:
-    logging.error(f"Error importing Supabase service: {e}", exc_info=True)
-        
+from supabase_service import get_supabase_client, get_supabase_service_role_client
+
 # supabase = get_supabase_client()
 # supabase_service_role = get_supabase_service_role_client()
 
