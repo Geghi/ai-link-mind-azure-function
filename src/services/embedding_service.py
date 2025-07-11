@@ -1,8 +1,8 @@
 import logging
 import uuid
-from openai_service import get_embedding
-from scraped_pages_service import insert_text_chunk_with_embedding
-from pinecone_service import PineconeService
+from src.services.openai_service import get_embedding
+from src.services.scraped_pages_service import insert_text_chunk_with_embedding
+from src.services.pinecone_service import PineconeService
 
 def process_and_embed_text(scraped_page_id: str, user_id: str, page_text_content: str, task_id: str, url: str) -> None:
     """

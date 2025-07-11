@@ -1,5 +1,5 @@
 import logging
-from supabase_service import get_supabase_service_role_client
+from src.services.supabase_service import get_supabase_service_role_client
 from supabase import Client, PostgrestAPIResponse
 
 def upsert_chat_summary(task_id: str, summary_text: str) -> bool:

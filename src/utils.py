@@ -2,7 +2,7 @@ import json
 import logging
 import azure.functions as func
 from azure.functions import Out
-from scraped_pages_service import insert_scraped_page, get_scraped_urls_for_task
+from src.services.scraped_pages_service import insert_scraped_page, get_scraped_urls_for_task
 
 import tiktoken
 from typing import List, Dict

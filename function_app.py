@@ -4,13 +4,13 @@ import sys
 import os
 import json 
 
-from scraped_pages_service import insert_scraped_page, update_scraped_page_status
-from scraper import get_internal_links, get_page_text_content, get_page_html_content
-from embedding_service import process_and_embed_text # New import for embedding service
-from utils import json_response, parse_queue_message, process_internal_links, parse_http_request, count_tokens
-from pinecone_service import PineconeService
-from openai_service import get_embedding, get_chat_completion, summarize_conversation
-from chat_summary_service import get_chat_summary, upsert_chat_summary
+from src.services.scraped_pages_service import insert_scraped_page, update_scraped_page_status
+from src.services.scraper import get_internal_links, get_page_text_content, get_page_html_content
+from src.services.embedding_service import process_and_embed_text # New import for embedding service
+from src.utils import json_response, parse_queue_message, process_internal_links, parse_http_request, count_tokens
+from src.services.pinecone_service import PineconeService
+from src.services.openai_service import get_embedding, get_chat_completion, summarize_conversation
+from src.services.chat_summary_service import get_chat_summary, upsert_chat_summary
 
 
 logging.basicConfig(level=logging.INFO)
