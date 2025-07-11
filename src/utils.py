@@ -81,34 +81,53 @@ def parse_queue_message(azqueue: func.QueueMessage) -> dict | None:
     return {"task_id": task_id, "url": url, "user_id": user_id, "depth": depth, "max_depth": max_depth, "scraped_page_id": scraped_page_id}
 
 def process_internal_links(task_id: str, user_id: str, current_url: str, depth: int, max_depth: int, internal_links: list[str], output_queue: func.Out[str]) -> None:
-    """Helper to process internal links found on a page."""
-    
-    # Fetch all existing URLs for the current task once
-    existing_urls = get_scraped_urls_for_task(task_id, user_id)
-    logging.info(f"Fetched {len(existing_urls)} existing URLs for task {task_id}.")
-    
-    messages = []
+    """
+    Processes internal links found on a page, queues them for scraping if they are new.
+    Relies on the database's unique constraint on (task_id, url) to avoid race conditions.
+    """
+    if depth >= max_depth:
+        logging.info(f"Max depth reached at {current_url}. No further links will be queued from this page.")
+        return
+
+    messages_to_queue = []
+    visited_urls = set()  # Keep track of URLs processed in this batch
+
     for link in internal_links:
+        # Normalize the URL by removing the trailing slash if it exists
+        normalized_link = link.rstrip('/')
+        
+        if normalized_link in visited_urls:
+            continue  # Skip if we've already processed this normalized link in the current batch
+            
+        visited_urls.add(normalized_link)
+
         try:
-            if link in existing_urls:
-                logging.info(f"Link {link} already exists for task {task_id}. Skipping upsert and queueing.")
-                continue # Skip if already processed
-
-            new_scraped_page_id = insert_scraped_page(task_id, user_id, link, "Queued") # Pass user_id
+            # Attempt to insert the new link. The function will return an ID only if the link is new.
+            new_scraped_page_id = insert_scraped_page(task_id, user_id, normalized_link, "Queued")
+            
             if new_scraped_page_id:
-                existing_urls.add(link) 
-                if depth + 1 <= max_depth:
-                    next_payload: dict = {"task_id": task_id, "url": link, "user_id": user_id, "depth": depth + 1, "max_depth": max_depth, "scraped_page_id": new_scraped_page_id} # Pass user_id
-                    messages.append(next_payload)
-
+                # If an ID is returned, the link was new, so we can queue it for scraping.
+                logging.info(f"New link found and inserted: {link}. Queueing for scraping.")
+                next_payload = {
+                    "task_id": task_id,
+                    "url": link,
+                    "user_id": user_id,
+                    "depth": depth + 1,
+                    "max_depth": max_depth,
+                    "scraped_page_id": new_scraped_page_id
+                }
+                messages_to_queue.append(next_payload)
             else:
-                logging.warning(f"Failed to upsert scraped page for link {link} for task {task_id}. Skipping queueing.")
+                # If None is returned, the link already existed, so we don't queue it again.
+                logging.info(f"Link {link} already exists for task {task_id}. Skipping.")
+
         except Exception as e:
             logging.error(f"Error processing link {link} for task {task_id}: {e}", exc_info=True)
 
-    if messages:
-        logging.info(f"Queueing {len(messages)} internal links for task {task_id} at depth {depth}.")
-        output_queue.set(json.dumps(messages))
+    if messages_to_queue:
+        logging.info(f"Queueing {len(messages_to_queue)} new internal links for task {task_id}.")
+        # Note: Azure Functions Python worker currently sends each item in a list as a separate message.
+        output_queue.set(json.dumps(messages_to_queue))
 
 def parse_http_request(req: func.HttpRequest) -> dict | func.HttpResponse:
     """Helper to parse and validate HTTP request payload."""

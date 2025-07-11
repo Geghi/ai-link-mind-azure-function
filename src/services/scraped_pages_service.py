@@ -28,29 +28,37 @@ def get_scraped_urls_for_task(task_id: str, user_id: str) -> set[str]:
 
 def insert_scraped_page(task_id: str, user_id: str, url: str, status: str) -> int | None:
     """
-    Inserts a new scraped page entry or updates an existing one using upsert.
+    Inserts a new scraped page entry if it doesn't already exist.
     Uses the service role client to bypass RLS for initial data creation.
 
     Args:
         task_id (str): The ID of the scraping task.
         user_id (str): The ID of the user associated with the task.
         url (str): The URL of the page that was scraped.
-        status (str): The initial status of the scraped page (e.g., "Queued", "Processing").
+        status (str): The initial status of the scraped page (e.g., "Queued").
 
     Returns:
-        int | None: The ID of the inserted or updated scraped page, or None if an error occurs.
+        int | None: The ID of the newly inserted page, or None if the page already existed or an error occurred.
     """
     try:
-        data_to_upsert = {"task_id": task_id, "user_id": user_id, "url": url, "status": status} # Add user_id
+        data_to_upsert = {"task_id": task_id, "user_id": user_id, "url": url, "status": status}
         
-        # Use upsert to insert if not exists, or update if exists based on task_id and url
-        upsert_response = supabase_service_role.table('scraped_pages').upsert(data_to_upsert, on_conflict='task_id,url').execute()
+        # Use upsert with ignore_duplicates=True.
+        # This will only insert a new record if the combination of task_id and url does not already exist.
+        # If the record is a duplicate, it will be ignored, and the response will be empty.
+        upsert_response = supabase_service_role.table('scraped_pages').upsert(
+            data_to_upsert, 
+            on_conflict='task_id,url', 
+            ignore_duplicates=True
+        ).execute()
         
         if upsert_response.data:
-            logging.info(f"Upserted scraped page: Task ID: {task_id}, User ID: {user_id}, URL: {url}, Status: {status}") # Update log
+            logging.info(f"Inserted new scraped page: Task ID: {task_id}, User ID: {user_id}, URL: {url}, Status: {status}")
             return upsert_response.data[0]['id']
         else:
-            logging.error(f"Failed to upsert scraped page: {upsert_response.status_code} - {upsert_response.text}", exc_info=True)
+            # This can mean the record already existed (and was ignored) or an error occurred.
+            # The log below will capture the error case. If no error, it was a duplicate.
+            logging.info(f"Scraped page already exists or failed to insert: Task ID: {task_id}, URL: {url}")
             return None
     except Exception as e:
         logging.error(f"Error upserting scraped page (Task ID: {task_id}, User ID: {user_id}, URL: {url}): {e}", exc_info=True) # Update log
