@@ -2,7 +2,7 @@
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 # More info on Python, GitHub Actions, and Azure Functions: https://aka.ms/python-webapps-actions
 
-name: Build and deploy Python project to Azure Function App - ai-link-mind
+name: Build and deploy Python project to Azure Function App - ai-link-mind-linux
 
 on:
   push:
@@ -29,27 +29,12 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Create and start virtual environment
-        run: |
-          python -m venv venv
-          source venv/bin/activate
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt --target=".python_packages/lib/site-packages"
-
-      # Optional: Add step to run tests here
-
-      - name: Zip artifact for deployment
-        run: zip -r release.zip . -x "venv/*"
-        # run: zip release.zip ./* -r
-
-      - name: Upload artifact for deployment job
+      - name: Upload source for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: python-app
-          path: |
-            release.zip
-            !venv/
+          name: python-app-source
+          path: .
 
   deploy:
     runs-on: ubuntu-latest
@@ -59,26 +44,22 @@ jobs:
       contents: read #This is required for actions/checkout
 
     steps:
-      - name: Download artifact from build job
+      - name: Download source artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: python-app
-
-      - name: Unzip artifact for deployment
-        run: unzip release.zip     
+          name: python-app-source
         
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_7723F90429D44EFEBDA7C62E6C9B18CC }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3F5DDCBA5AF345408102B665648A5A79 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_EF4A7BC0F7464AEEAEA4D90F48EC21BA }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_16460C43E635424984A116B6A4609AD7 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_66CE7C462991410681CC7969978E0237 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_C6B7CB5BC91A41B4B8556C42CDB3F653 }}
 
       - name: 'Deploy to Azure Functions'
         uses: Azure/functions-action@v1
         id: deploy-to-function
         with:
-          app-name: 'ai-link-mind'
+          app-name: 'ai-link-mind-linux'
           slot-name: 'Production'
-          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
-          
+          package: '.'
