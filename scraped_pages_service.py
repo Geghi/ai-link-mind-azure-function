@@ -56,7 +56,7 @@ def insert_scraped_page(task_id: str, user_id: str, url: str, status: str) -> in
         logging.error(f"Error upserting scraped page (Task ID: {task_id}, User ID: {user_id}, URL: {url}): {e}", exc_info=True) # Update log
         return None
 
-def update_scraped_page_status(task_id: str, url: str, status: str, supabase, page_text_content: str = None) -> bool:
+def update_scraped_page_status(task_id: str, url: str, status: str, page_text_content: str = None) -> bool:
     """
     Updates the status and optionally the text content of an existing scraped page entry
     in the 'scraped_pages' table. Uses the service role client to bypass RLS.
