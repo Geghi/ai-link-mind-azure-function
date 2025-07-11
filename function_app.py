@@ -112,7 +112,7 @@ def ScrapeUrlRecursive(azqueue: func.QueueMessage, output_queue: func.Out[str]) 
     update_scraped_page_status(task_id, url, "Completed")
     logging.info(f"Processed {url} at depth {depth}. Status: Completed.")
 
-@app.route(route="ScrapeUrl", auth_level=func.AuthLevel.FUNCTION)
+@app.route(route="ScrapeUrl", auth_level=func.AuthLevel.ANONYMOUS, methods=["POST"])
 @app.queue_output(arg_name="output_queue", queue_name="scrape-queue",
                   connection="AzureWebJobsStorage")
 def ScrapeUrl(req: func.HttpRequest, output_queue: func.Out[str]) -> func.HttpResponse:
@@ -147,11 +147,6 @@ def ScrapeUrl(req: func.HttpRequest, output_queue: func.Out[str]) -> func.HttpRe
             logging.error(f"Failed to process initial request for {url} for task {task_id}, user {user_id}: {e}", exc_info=True) # Update log
             return json_response(f"Failed to start scraping for {url}.", 500)
         return json_response(f"Initiated scraping for URL: {url}.", 202)
-        return func.HttpResponse(
-            json.dumps({"message": "OK"}),
-            mimetype="application/json",
-            status_code=200
-        )
     except Exception as e:
         logging.error(f"Error processing request: {e}", exc_info=True)
         return func.HttpResponse(
