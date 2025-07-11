@@ -119,36 +119,50 @@ def ScrapeUrl(req: func.HttpRequest) -> func.HttpResponse:
     """
     Azure HTTP Trigger function to initiate web scraping.
     """
-    logging.info('Python HTTP trigger function processed a request.')
-    logging.info(f"Request body: {req.get_body().decode('utf-8')}")
-    from supabase_service import get_supabase_service_role_client
-    
-    supabase_serivce_role = get_supabase_service_role_client()
+    try:
 
-    # payload = parse_http_request(req)
-    # if isinstance(payload, func.HttpResponse):
-    #     return payload # Return error response if parsing failed
+        logging.info('Python HTTP trigger function processed a request.')
+        from supabase_service import get_supabase_service_role_client
+        logging.info(f"Request body: {req.get_body().decode('utf-8')}")
+        
+        supabase_serivce_role = get_supabase_service_role_client()
+        logging.info(f"Initialized Supabase service role client: {supabase_serivce_role}")
 
-    # url = payload['url']
-    # task_id = payload['task_id']
-    # user_id = payload['user_id']
-    # max_depth = payload['max_depth']
+        # payload = parse_http_request(req)
+        # if isinstance(payload, func.HttpResponse):
+        #     return payload # Return error response if parsing failed
 
-    # logging.info(f"Received request for URL: {url}, Task ID: {task_id}, User ID: {user_id}") # Update log
+        # url = payload['url']
+        # task_id = payload['task_id']
+        # user_id = payload['user_id']
+        # max_depth = payload['max_depth']
 
-    # try:
-    #     scraped_page_id = insert_scraped_page(task_id, user_id, url, "Queued") # Pass user_id
-    #     if scraped_page_id is None:
-    #         logging.error(f"Failed to create initial scraped page entry for {url} for task {task_id}, user {user_id}.") # Update log
-    #         return json_response(f"Failed to create initial scraped page entry for {url}.", 500)
+        # logging.info(f"Received request for URL: {url}, Task ID: {task_id}, User ID: {user_id}") # Update log
 
-    #     initial_payload: dict = {"task_id": task_id, "url": url, "user_id": user_id, "depth": 0, "max_depth": max_depth, "scraped_page_id": scraped_page_id} # Pass user_id
-    #     output_queue.set(json.dumps(initial_payload))
-    # except Exception as e:
-    #     logging.error(f"Failed to process initial request for {url} for task {task_id}, user {user_id}: {e}", exc_info=True) # Update log
-    #     return json_response(f"Failed to start scraping for {url}.", 500)
-    # return json_response(f"Initiated scraping for URL: {url}.", 202)
-    return None
+        # try:
+        #     scraped_page_id = insert_scraped_page(task_id, user_id, url, "Queued") # Pass user_id
+        #     if scraped_page_id is None:
+        #         logging.error(f"Failed to create initial scraped page entry for {url} for task {task_id}, user {user_id}.") # Update log
+        #         return json_response(f"Failed to create initial scraped page entry for {url}.", 500)
+
+        #     initial_payload: dict = {"task_id": task_id, "url": url, "user_id": user_id, "depth": 0, "max_depth": max_depth, "scraped_page_id": scraped_page_id} # Pass user_id
+        #     output_queue.set(json.dumps(initial_payload))
+        # except Exception as e:
+        #     logging.error(f"Failed to process initial request for {url} for task {task_id}, user {user_id}: {e}", exc_info=True) # Update log
+        #     return json_response(f"Failed to start scraping for {url}.", 500)
+        # return json_response(f"Initiated scraping for URL: {url}.", 202)
+        return func.HttpResponse(
+            json.dumps({"message": "OK"}),
+            mimetype="application/json",
+            status_code=200
+        )
+    except Exception as e:
+        logging.error(f"Error processing request: {e}", exc_info=True)
+        return func.HttpResponse(
+            json.dumps({"error": str(e)}),
+            mimetype="application/json",
+            status_code=500
+        )
 
 
 

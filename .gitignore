@@ -48,3 +48,5 @@ __queuestorage__
 __azurite_db*__.json
 
 AzuriteConfig
+
+test_scrape_url.py
