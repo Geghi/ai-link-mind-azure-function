@@ -114,10 +114,8 @@ def HealthCheck(req: func.HttpRequest) -> func.HttpResponse:
 #     update_scraped_page_status(task_id, url, "Completed")
 #     logging.info(f"Processed {url} at depth {depth}. Status: Completed.")
 
-@app.route(route="ScrapeUrl", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET, func.HttpMethod.POST])
-@app.queue_output(arg_name="output_queue", queue_name="scrape-queue",
-                  connection="AzureWebJobsStorage")
-def ScrapeUrl(req: func.HttpRequest, output_queue: func.Out[str]) -> func.HttpResponse:
+@app.route(route="ScrapeUrl", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.POST])
+def ScrapeUrl(req: func.HttpRequest) -> func.HttpResponse:
     """
     Azure HTTP Trigger function to initiate web scraping.
     """
@@ -258,27 +256,3 @@ def ScrapeUrl(req: func.HttpRequest, output_queue: func.Out[str]) -> func.HttpRe
 #             else:
 #                 # This message fits, add it to the managed list
 #                 managed_conversation_messages.insert(0, message)
-
-#         # If there are messages that didn't fit, summarize them
-#         if messages_to_summarize:
-#             logging.info(f"Summarizing {len(messages_to_summarize)} older messages.")
-#             new_summary = summarize_conversation(messages_to_summarize)
-#             if task_id:
-#                 upsert_chat_summary(task_id, new_summary)
-#             # Add the new summary to the context for the current turn
-#             final_messages_for_llm.append({"role": "system", "content": f"Conversation Summary: {new_summary}"})
-
-#         # 3. Finalize and call LLM
-#         final_messages_for_llm.extend(managed_conversation_messages)
-#         final_messages_for_llm.append(current_user_query_message)
-
-#         # 4. Get chat completion from OpenAI
-#         rag_response = get_chat_completion(final_messages_for_llm)
-#         logging.info(f"Generated RAG response for query: '{current_user_query}' - Response: {rag_response}")
-
-#         # 5. Return only the assistant's response
-#         return json_response({"response": rag_response}, 200)
-
-#     except Exception as e:
-#         logging.error(f"Error performing RAG with conversation memory for query '{current_user_query}': {e}", exc_info=True)
-#         return json_response(f"An error occurred while processing your request: {e}", 500)
