@@ -50,3 +50,4 @@ __azurite_db*__.json
 AzuriteConfig
 
 test_scrape_url.py
+Dockerfile
