@@ -1,71 +1,18 @@
-import asyncio
 import logging
 import json
-from typing import List, Set, Dict, Any
-
+from typing import List
 import aiohttp
 import azure.functions as func
 import nest_asyncio
-
-from src.scraping.async_scraper import fetch_page
-from src.services.scraped_pages_service import insert_scraped_page, update_scraped_page_status, get_scraped_urls_for_task
-from src.services.scraper import get_page_text_content, get_internal_links
+from src.scraping.orchestrator import ScrapingOrchestrator
+from src.services.scraped_pages_service import ScrapedPagesService
+from src.services.scraper_service import ScraperService
 
 # Apply nest_asyncio to allow running asyncio event loop in Azure Functions
 nest_asyncio.apply()
 
 # Blueprint for the new scraping endpoint
 perform_scraping_bp = func.Blueprint()
-
-async def process_single_url(session: aiohttp.ClientSession, url: str, task_id: str, user_id: str, depth: int, max_depth: int, visited_urls: Set[str]) -> List[Dict[str, Any]]:
-    """
-    Fetches a single URL, extracts content, finds internal links, and returns payloads for embedding.
-    """
-    if url in visited_urls or depth > max_depth:
-        return []
-
-    visited_urls.add(url)
-    
-    scraped_page_id = insert_scraped_page(task_id, user_id, url, status="Pending")
-
-    html_content = await fetch_page(session, url)
-    if not html_content:
-        logging.error(f"Failed to fetch content for {url}. Skipping.")
-        insert_scraped_page(task_id, user_id, url, status="Failed")
-        return []
-
-    if not scraped_page_id:
-        logging.error(f"Failed to create a scraped page record for {url}.")
-        return []
-
-    page_text_content = get_page_text_content(html_content)
-    payloads = []
-    if page_text_content:
-        update_scraped_page_status(task_id, url, "Queued", page_text_content=page_text_content)
-        
-        embedding_payload = {
-            "scraped_page_id": scraped_page_id,
-            "user_id": user_id,
-            "task_id": task_id,
-            "url": url,
-            "page_text_content": page_text_content
-        }
-        payloads.append(embedding_payload)
-        logging.info(f"Prepared {url} for embedding.")
-    else:
-        update_scraped_page_status(task_id, url, "Completed")
-        logging.warning(f"No text content found for {url}. Marked as completed.")
-
-    # Recursive scraping
-    if depth < max_depth:
-        internal_links = get_internal_links(url, url, html_content)
-        tasks = [process_single_url(session, link, task_id, user_id, depth + 1, max_depth, visited_urls) for link in internal_links]
-        results = await asyncio.gather(*tasks)
-        for result in results:
-            payloads.extend(result)
-            
-    return payloads
-
 
 @perform_scraping_bp.route(route="scrape", auth_level=func.AuthLevel.ANONYMOUS, methods=["POST"])
 @perform_scraping_bp.queue_output(arg_name="embedding_queue", queue_name="embedding-queue", connection="AzureWebJobsStorage")
@@ -93,11 +40,15 @@ async def perform_scraping(req: func.HttpRequest, embedding_queue: func.Out[List
 
     logging.info(f"Starting scraping task with ID: {task_id} for URL: {url}")
 
-    visited_urls = set(get_scraped_urls_for_task(task_id, user_id))
+    scraper_service = ScraperService()
+    scraped_pages_service = ScrapedPagesService()
+    orchestrator = ScrapingOrchestrator(scraper_service, scraped_pages_service)
     
     payloads_to_queue = []
     async with aiohttp.ClientSession() as session:
-        payloads_to_queue = await process_single_url(session, url, task_id, user_id, 0, max_depth, visited_urls)
+        # Get already visited URLs
+        orchestrator.visited_urls = scraped_pages_service.get_scraped_urls_for_task(task_id, user_id)
+        payloads_to_queue = await orchestrator.scrape(session, url, task_id, user_id, 0, max_depth)
     
     if payloads_to_queue:
         embedding_queue.set([json.dumps(p) for p in payloads_to_queue])
