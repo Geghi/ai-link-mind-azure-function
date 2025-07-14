@@ -12,14 +12,30 @@
 
 *   **Function Design:** Functions must be small, stateless, idempotent, and have a single responsibility.
 *   **Code Structure:**
-    *   Isolate external service interactions in `src/services`.
-    *   Strictly follow PEP 8 naming conventions.
+    *   Prefer class-based design for components with clear responsibilities (e.g., Scraper, RAGExtractor).
+    *   Each class should have a single, well-defined scope following the Single Responsibility Principle.
+    *   Isolate external service interactions in `src/services` using service classes.
+    *   Strictly follow PEP 8 naming conventions:
+        - Class names: `PascalCase`
+        - Method names: `snake_case`
+        - Constants: `UPPER_SNAKE_CASE`
+*   **Class Design Guidelines:**
+    *   Keep classes focused on one primary responsibility.
+    *   Use `__init__` for required dependencies, not for complex initialization logic.
+    *   Document public methods with concise docstrings following Google style.
+    *   Prefer composition over inheritance for code reuse.
+    *   Make classes testable by injecting dependencies.
 *   **Code Quality:**
-    *   Use type hints for all function signatures.
+    *   Use type hints for all function signatures and class attributes.
     *   Implement robust `try-except` blocks for all I/O and API calls, with clear and informative logging with exc_info=True for stack trace.
-    *   Adhere to the "Don't Repeat Yourself" (DRY) principle by abstracting common logic into reusable functions or classes.
+    *   Adhere to the "Don't Repeat Yourself" (DRY) principle by abstracting common logic into reusable classes or functions.
     *   Prioritize readability and simplicity over overly complex or clever solutions.
-    *   Write very simple docstring ONLY for complex methods but keep them minimal.
+    *   Write simple docstrings for public methods and classes.
+*   **Modularization:**
+    *   Group related functionality into cohesive modules.
+    *   Keep module interfaces small and focused.
+    *   Use private methods (`_prefix`) for internal implementation details.
+    *   Maintain clear separation between different abstraction levels.
 
 ---
 

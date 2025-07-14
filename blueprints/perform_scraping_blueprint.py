@@ -26,13 +26,14 @@ async def process_single_url(session: aiohttp.ClientSession, url: str, task_id: 
 
     visited_urls.add(url)
     
+    scraped_page_id = insert_scraped_page(task_id, user_id, url, status="Pending")
+
     html_content = await fetch_page(session, url)
     if not html_content:
         logging.error(f"Failed to fetch content for {url}. Skipping.")
         insert_scraped_page(task_id, user_id, url, status="Failed")
         return []
 
-    scraped_page_id = insert_scraped_page(task_id, user_id, url, status="Processing")
     if not scraped_page_id:
         logging.error(f"Failed to create a scraped page record for {url}.")
         return []
@@ -40,7 +41,7 @@ async def process_single_url(session: aiohttp.ClientSession, url: str, task_id: 
     page_text_content = get_page_text_content(html_content)
     payloads = []
     if page_text_content:
-        update_scraped_page_status(task_id, url, "Processing", page_text_content=page_text_content)
+        update_scraped_page_status(task_id, url, "Queued", page_text_content=page_text_content)
         
         embedding_payload = {
             "scraped_page_id": scraped_page_id,

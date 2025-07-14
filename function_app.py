@@ -5,7 +5,6 @@ import os
 import json 
 
 # Import blueprints
-from blueprints.scrape_url_blueprint import scrape_url_bp
 from blueprints.scrape_url_recursive_blueprint import scrape_url_recursive_bp
 from blueprints.rag_blueprint import rag_bp
 from blueprints.utility_blueprint import utility_bp
@@ -21,7 +20,6 @@ logging.info("Azure Function App is starting...")
 app = func.FunctionApp()
 
 # Register blueprints
-app.register_blueprint(scrape_url_bp)
 app.register_blueprint(scrape_url_recursive_bp)
 app.register_blueprint(rag_bp)
 app.register_blueprint(utility_bp)
