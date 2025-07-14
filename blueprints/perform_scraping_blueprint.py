@@ -41,6 +41,7 @@ async def perform_scraping(req: func.HttpRequest, embedding_queue: func.Out[List
     logging.info(f"Starting scraping task with ID: {task_id} for URL: {url}")
 
     scraper_service = ScraperService()
+    await scraper_service.initialize()
     scraped_pages_service = ScrapedPagesService()
     orchestrator = ScrapingOrchestrator(scraper_service, scraped_pages_service)
     

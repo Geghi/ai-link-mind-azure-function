@@ -3,40 +3,52 @@ import asyncio
 import logging
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
-from src.scraping.proxy_manager import get_random_proxy
+from src.scraping.proxy_manager import ProxyManager
 from src.scraping.user_agent_manager import get_random_user_agent
+
+logger = logging.getLogger(__name__)
 
 class ScraperService:
     """
     A service class for scraping web pages.
     """
 
+    def __init__(self):
+        self.proxy_manager = ProxyManager()
+
+    async def initialize(self):
+        """
+        Initializes the ScraperService by loading proxies.
+        """
+        await self.proxy_manager.get_proxies()
+
     async def fetch_page(self, session: ClientSession, url: str, max_retries: int = 3) -> str | None:
         """
         Fetches a single page with retries, proxy, and user-agent rotation.
         """
         for attempt in range(max_retries):
-            proxy = get_random_proxy()
+            proxy = self.proxy_manager.get_random_proxy()
+            logger.info(f"Fetching {url} with proxy {proxy} (Attempt {attempt + 1})")
             headers = {"User-Agent": get_random_user_agent()}
             
             try:
                 async with session.get(url, headers=headers, proxy=proxy, timeout=15) as response:
                     response.raise_for_status()
-                    logging.info(f"Successfully fetched {url} with status {response.status}")
+                    logger.info(f"Successfully fetched {url} with status {response.status}")
                     return await response.text()
             except (ClientError, ClientResponseError) as e:
-                logging.warning(
+                logger.warning(
                     f"Attempt {attempt + 1} failed for {url} with proxy {proxy}. "
                     f"Error: {e}. Retrying..."
                 )
                 await asyncio.sleep(2 ** attempt)  # Exponential backoff
             except asyncio.TimeoutError:
-                logging.warning(
+                logger.warning(
                     f"Attempt {attempt + 1} for {url} timed out with proxy {proxy}. Retrying..."
                 )
                 await asyncio.sleep(2 ** attempt)
 
-        logging.error(f"Failed to fetch {url} after {max_retries} attempts.")
+        logger.error(f"Failed to fetch {url} after {max_retries} attempts.")
         return None
 
 
@@ -54,7 +66,7 @@ class ScraperService:
         """
         Retrieves all internal links from a given HTML content, relative to a base URL.
         """
-        logging.info(f"Extracting internal links from {current_url}")
+        logger.info(f"Extracting internal links from {current_url}")
         links = set()
         try:
             soup = BeautifulSoup(html_content, 'html.parser')
@@ -76,6 +88,6 @@ class ScraperService:
                     if len(links) >= max_links_per_page:
                         break
         except Exception as e:
-            logging.error(f"An unexpected error occurred while extracting links from {current_url}: {e}", exc_info=True)
+            logger.error(f"An unexpected error occurred while extracting links from {current_url}: {e}", exc_info=True)
         
         return list(links)

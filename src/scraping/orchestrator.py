@@ -5,6 +5,7 @@ import aiohttp
 from src.services.scraper_service import ScraperService
 from src.services.scraped_pages_service import ScrapedPagesService
 
+logger = logging.getLogger(__name__)
 
 class ScrapingOrchestrator:
     """
@@ -29,12 +30,12 @@ class ScrapingOrchestrator:
 
         html_content = await self.scraper_service.fetch_page(session, url)
         if not html_content:
-            logging.error(f"Failed to fetch content for {url}. Skipping.")
+            logger.error(f"Failed to fetch content for {url}. Skipping.")
             self.scraped_pages_service.update_scraped_page_status(task_id, url, "Failed")
             return []
 
         if not scraped_page_id:
-            logging.error(f"Failed to create a scraped page record for {url}.")
+            logger.error(f"Failed to create a scraped page record for {url}.")
             return []
 
         page_text_content = self.scraper_service.get_page_text_content(html_content)
@@ -50,10 +51,10 @@ class ScrapingOrchestrator:
                 "page_text_content": page_text_content
             }
             payloads.append(embedding_payload)
-            logging.info(f"Prepared {url} for embedding.")
+            logger.info(f"Prepared {url} for embedding.")
         else:
             self.scraped_pages_service.update_scraped_page_status(task_id, url, "Completed")
-            logging.warning(f"No text content found for {url}. Marked as completed.")
+            logger.warning(f"No text content found for {url}. Marked as completed.")
 
         if depth < max_depth:
             internal_links = self.scraper_service.get_internal_links(url, url, html_content)
